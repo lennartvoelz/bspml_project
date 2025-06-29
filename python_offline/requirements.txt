@@ -1,0 +1,7 @@
+# Signal processing
+pywt
+numpy
+scipy
+# Visualization and data handling
+matplotlib
+pandas
