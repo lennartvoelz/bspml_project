@@ -16,15 +16,15 @@ This project implements signal processing techniques for photoplethysmography (P
 bspml_project/
 ├── python_offline/          # Python-based offline processing and prototyping
 │   ├── bspml/
-│   │   ├── preprocessing/   # Signal preprocessing modules
-│   │   ├── hr_estimation/   # Heart rate estimation algorithms
-├── cpp_realtime/           # C++ real-time implementation
-│   ├── src/                # Source code
-│   ├── include/            # Header files
-│   └── tests/              # C++ unit tests
-├── data/                   # Dataset storage
-│   ├── ppg_dalia/         # PPG-DaLiA dataset
-│   └── real_world/        # Self-collected data
+│       ├── preprocessing/   # Signal preprocessing modules
+│       └── hr_estimation/   # Heart rate estimation algorithms
+├── cpp_realtime/            # C++ real-time implementation
+│   ├── src/                 # Source code
+│   ├── include/             # Header files
+│   └── tests/               # C++ unit tests
+├── data/                    # Dataset storage
+│   ├── ppg_dalia/           # PPG-DaLiA dataset
+│   └── real_world/          # Self-collected data
 ```
 
 ## Features
