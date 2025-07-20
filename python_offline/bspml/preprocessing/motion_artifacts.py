@@ -26,7 +26,8 @@ def combine_accelerometer_channels(acc_signals: np.ndarray) -> np.ndarray:
             return magnitude.reshape(-1, 1)
     else:
         raise ValueError(
-            f"Accelerometer signals must be 1D or 2D, got {acc_signals.ndim}D")
+            f"Accelerometer signals must be 1D or 2D, got {acc_signals.ndim}D"
+        )
 
 
 class RLSFilter:
@@ -36,7 +37,7 @@ class RLSFilter:
         self,
         filter_order: int = 8,
         forgetting_factor: float = 0.99,
-        regularization: float = 1e-6
+        regularization: float = 1e-4,
     ):
         """
         Initialize RLS filter.
@@ -71,8 +72,7 @@ class RLSFilter:
             Filtered output sample
         """
         if len(reference_vector) != self.filter_order:
-            raise ValueError(
-                f"Reference vector must have length {self.filter_order}")
+            raise ValueError(f"Reference vector must have length {self.filter_order}")
 
         # Calculate filter output
         output = np.dot(self.weights, reference_vector)
@@ -97,7 +97,7 @@ def rls_filter(
     filter_order: int = 15,
     forgetting_factor: float = 0.97,
     delay_compensation: Optional[int] = None,
-    auto_delay_detection: bool = True
+    auto_delay_detection: bool = True,
 ) -> np.ndarray:
     """
     Apply RLS adaptive filtering for motion artifact removal using accelerometer reference.
@@ -129,13 +129,11 @@ def rls_filter(
 
     # Apply delay compensation if requested
     if auto_delay_detection:
-        delay_compensation = detect_optimal_delay(
-            ppg_signal, acc_combined.flatten())
+        delay_compensation = detect_optimal_delay(ppg_signal, acc_combined.flatten())
         print(f"Auto-detected delay: {delay_compensation} samples")
 
     if delay_compensation is not None and delay_compensation != 0:
-        acc_combined = apply_delay_compensation(
-            acc_combined, delay_compensation)
+        acc_combined = apply_delay_compensation(acc_combined, delay_compensation)
 
     # Create reference signal matrix by combining accelerometer signal
     # and its delayed versions to capture motion dynamics
@@ -157,10 +155,7 @@ def rls_filter(
     return cleaned_signal
 
 
-def create_reference_matrix(
-    acc_signals: np.ndarray,
-    filter_order: int
-) -> np.ndarray:
+def create_reference_matrix(acc_signals: np.ndarray, filter_order: int) -> np.ndarray:
     """
     Create reference signal matrix from accelerometer data.
 
@@ -178,7 +173,8 @@ def create_reference_matrix(
 
     if n_channels != 1:
         raise ValueError(
-            f"Expected single channel accelerometer data, got {n_channels} channels")
+            f"Expected single channel accelerometer data, got {n_channels} channels"
+        )
 
     # Create time-delayed versions of the accelerometer signal
     reference_matrix = np.zeros((n_samples, filter_order))
@@ -200,7 +196,9 @@ def create_reference_matrix(
     return reference_matrix
 
 
-def detect_optimal_delay(ppg_signal: np.ndarray, acc_signal: np.ndarray, max_delay: int = 20) -> int:
+def detect_optimal_delay(
+    ppg_signal: np.ndarray, acc_signal: np.ndarray, max_delay: int = 20
+) -> int:
     """
     Detect optimal delay between PPG and accelerometer signals.
 
@@ -215,12 +213,12 @@ def detect_optimal_delay(ppg_signal: np.ndarray, acc_signal: np.ndarray, max_del
     from scipy import signal as scipy_signal
 
     # Extract high-frequency components for better correlation
-    fs = 64.0  # Assume 64 Hz sampling rate
+    fs = 50.0  # Assume 64 Hz sampling rate
     nyquist = fs / 2
     high_cutoff = 1.0  # Hz
 
     if high_cutoff < nyquist:
-        b, a = scipy_signal.butter(4, high_cutoff / nyquist, btype='high')
+        b, a = scipy_signal.butter(4, high_cutoff / nyquist, btype="high")
         ppg_high = scipy_signal.filtfilt(b, a, ppg_signal)
         acc_high = scipy_signal.filtfilt(b, a, acc_signal)
     else:
@@ -244,8 +242,7 @@ def detect_optimal_delay(ppg_signal: np.ndarray, acc_signal: np.ndarray, max_del
             # PPG leads ACC
             delay_abs = abs(delay)
             if delay_abs < len(ppg_high):
-                corr = np.corrcoef(
-                    ppg_high[:-delay_abs], acc_high[delay_abs:])[0, 1]
+                corr = np.corrcoef(ppg_high[:-delay_abs], acc_high[delay_abs:])[0, 1]
             else:
                 corr = 0
 

@@ -10,7 +10,7 @@ def find_peaks_sliding_window(
     ppg_signal: np.ndarray,
     sampling_rate: float,
     window_size: float = 8.0,
-    overlap: float = 0.5,
+    overlap: float = 0.2,
     min_peak_distance: float = 0.3,
     min_peak_height: Optional[float] = None,
     adaptive_threshold: bool = True

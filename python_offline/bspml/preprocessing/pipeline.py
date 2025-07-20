@@ -17,7 +17,7 @@ def resample_accelerometer_data(
     acc_signals: np.ndarray,
     original_rate: float,
     target_rate: float,
-    target_length: int
+    target_length: int,
 ) -> np.ndarray:
     """
     Resample accelerometer data to match PPG sampling rate and length.
@@ -43,17 +43,17 @@ def resample_accelerometer_data(
     for axis in range(acc_signals.shape[1]):
         # Use scipy.signal.resample for high-quality resampling
         resampled_axis = signal.resample(
-            acc_signals[:, axis], int(len(acc_signals) * ratio))
+            acc_signals[:, axis], int(len(acc_signals) * ratio)
+        )
 
         # Trim or pad to exact target length
         if len(resampled_axis) >= target_length:
             resampled_signals[:, axis] = resampled_axis[:target_length]
         else:
-            resampled_signals[:len(resampled_axis), axis] = resampled_axis
+            resampled_signals[: len(resampled_axis), axis] = resampled_axis
             # Pad with last value if needed
             if len(resampled_axis) < target_length:
-                resampled_signals[len(resampled_axis):,
-                                  axis] = resampled_axis[-1]
+                resampled_signals[len(resampled_axis) :, axis] = resampled_axis[-1]
 
     return resampled_signals
 
@@ -61,17 +61,17 @@ def resample_accelerometer_data(
 def preprocess_ppg(
     ppg_signal: np.ndarray,
     acc_signals: Optional[np.ndarray] = None,
-    sampling_rate: float = 64.0,
+    sampling_rate: float = 50.0,
     acc_sampling_rate: Optional[float] = None,
     enable_detrending: bool = True,
     enable_denoising: bool = True,
     enable_motion_removal: bool = True,
     adaptive_motion_removal: bool = True,
     motion_threshold: float = 80.0,
-    detrending_method: str = 'wavelet',
-    denoising_method: str = 'bandpass',
-    motion_removal_method: str = 'rls',
-    preprocessing_params: Optional[Dict[str, Any]] = None
+    detrending_method: str = "wavelet",
+    denoising_method: str = "bandpass",
+    motion_removal_method: str = "rls",
+    preprocessing_params: Optional[Dict[str, Any]] = None,
 ) -> np.ndarray:
     """
     Complete PPG signal preprocessing pipeline.
@@ -115,67 +115,63 @@ def preprocess_ppg(
     if enable_motion_removal and acc_signals is not None:
         # Determine accelerometer sampling rate
         if acc_sampling_rate is None:
-            acc_sampling_rate = 32.0  # Default for PPG Dalia dataset
+            acc_sampling_rate = 50.0  # Default for PPG Dalia dataset
 
         # Resample accelerometer data to match PPG signal
         acc_resampled = resample_accelerometer_data(
             acc_signals=acc_signals,
             original_rate=acc_sampling_rate,
             target_rate=sampling_rate,
-            target_length=len(processed_signal)
+            target_length=len(processed_signal),
         )
 
         # Adaptive motion removal: check if motion level warrants RLS filtering
         should_use_rls = True
         if adaptive_motion_removal:
             from .motion_artifacts import combine_accelerometer_channels
+
             acc_combined = combine_accelerometer_channels(acc_resampled)
             motion_magnitude = acc_combined.flatten()
 
             # Calculate motion statistics
-            high_motion_percentage = np.mean(
-                motion_magnitude > motion_threshold) * 100
+            high_motion_percentage = np.mean(motion_magnitude > motion_threshold) * 100
 
             # Use RLS only if significant high motion is detected
             should_use_rls = high_motion_percentage > 10.0  # 10% threshold
 
             print(
-                f"Motion analysis: {high_motion_percentage:.1f}% above threshold {motion_threshold:.1f}")
+                f"Motion analysis: {high_motion_percentage:.1f}% above threshold {motion_threshold:.1f}"
+            )
             print(
-                f"RLS filter: {'ENABLED' if should_use_rls else 'DISABLED'} (adaptive)")
+                f"RLS filter: {'ENABLED' if should_use_rls else 'DISABLED'} (adaptive)"
+            )
 
         if should_use_rls:
-            if motion_removal_method == 'rls':
-                rls_params = preprocessing_params.get('rls', {})
+            if motion_removal_method == "rls":
+                rls_params = preprocessing_params.get("rls", {})
                 processed_signal = rls_filter(
-                    processed_signal,
-                    acc_resampled,
-                    **rls_params
+                    processed_signal, acc_resampled, **rls_params
                 )
             else:
                 raise ValueError(
-                    f"Unknown motion removal method: {motion_removal_method}")
+                    f"Unknown motion removal method: {motion_removal_method}"
+                )
         else:
             print("RLS filter skipped due to low motion level")
 
     if enable_denoising:
-
-        if denoising_method == 'bandpass':
-            bandpass_params = preprocessing_params.get('bandpass', {})
+        if denoising_method == "bandpass":
+            bandpass_params = preprocessing_params.get("bandpass", {})
             processed_signal = bandpass_filter(
-                processed_signal,
-                sampling_rate,
-                **bandpass_params
+                processed_signal, sampling_rate, **bandpass_params
             )
         else:
             raise ValueError(f"Unknown denoising method: {denoising_method}")
-        
-    if enable_detrending:
 
-        if detrending_method == 'wavelet':
-            wavelet_params = preprocessing_params.get('wavelet', {})
-            processed_signal = wavelet_detrend(
-                processed_signal, **wavelet_params)
+    if enable_detrending:
+        if detrending_method == "wavelet":
+            wavelet_params = preprocessing_params.get("wavelet", {})
+            processed_signal = wavelet_detrend(processed_signal, **wavelet_params)
         else:
             raise ValueError(f"Unknown detrending method: {detrending_method}")
 
@@ -190,19 +186,12 @@ def get_default_preprocessing_params() -> Dict[str, Any]:
         Dictionary with default parameters for all preprocessing methods
     """
     return {
-        'wavelet': {
-            'wavelet': 'db4',
-            'levels': None,
-            'mode': 'symmetric'
+        "wavelet": {"wavelet": "db4", "levels": None, "mode": "symmetric"},
+        "bandpass": {
+            "low_cutoff": 0.5,
+            "high_cutoff": 4.0,
+            "filter_order": 4,
+            "filter_type": "butterworth",
         },
-        'bandpass': {
-            'low_cutoff': 0.5,
-            'high_cutoff': 4.0,
-            'filter_order': 4,
-            'filter_type': 'butterworth'
-        },
-        'rls': {
-            'filter_order': 8,
-            'forgetting_factor': 0.99
-        }
+        "rls": {"filter_order": 8, "forgetting_factor": 0.99},
     }

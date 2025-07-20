@@ -3,7 +3,8 @@ Module for PPG signal preprocessing and heart rate estimation.
 
 - Signal preprocessing (detrending, denoising, motion artifact removal)
 - Heart rate estimation algorithms
-- Data loading utilities
+- Data loading utilities for PPG Dalia and real-world data
+- Evaluation metrics with optional ground truth support
 
 """
 
@@ -16,7 +17,16 @@ from . import evaluation
 # Import key functions
 from .preprocessing import preprocess_ppg
 from .hr_estimation import estimate_heart_rate
-from .data_loading import load_ppg_dalia_data, load_accelerometer_data, load_ground_truth_data, get_available_subjects
+from .data_loading import (
+    load_ppg_dalia_data,
+    load_accelerometer_data,
+    load_ground_truth_data,
+    load_real_world_data,
+    load_data_auto,
+    detect_data_type,
+    get_available_subjects,
+    get_available_real_world_files,
+)
 from .evaluation import evaluate_pipeline_performance, print_evaluation_summary
 
 __all__ = [
@@ -31,5 +41,5 @@ __all__ = [
     "load_ground_truth_data",
     "get_available_subjects",
     "evaluate_pipeline_performance",
-    "print_evaluation_summary"
+    "print_evaluation_summary",
 ]

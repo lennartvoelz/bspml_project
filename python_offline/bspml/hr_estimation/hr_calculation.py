@@ -10,7 +10,7 @@ def calculate_instantaneous_hr(
     peak_indices: np.ndarray,
     sampling_rate: float,
     interpolation_rate: Optional[float] = None,
-    method: str = 'linear'
+    method: str = "linear",
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculate instantaneous heart rate from detected peaks.
@@ -51,35 +51,17 @@ def calculate_instantaneous_hr(
         time_end = valid_times[-1]
 
         # Create regular time grid
-        regular_times = np.arange(
-            time_start, time_end, 1.0 / interpolation_rate)
+        regular_times = np.arange(time_start, time_end, 1.0 / interpolation_rate)
 
         if len(regular_times) > 1:
             # Interpolate heart rate values
-            if method == 'linear':
-                interp_func = interpolate.interp1d(
-                    valid_times, valid_hr, kind='linear',
-                    bounds_error=False, fill_value='extrapolate'
-                )
-            elif method == 'cubic':
-                if len(valid_hr) >= 4:  # Need at least 4 points for cubic
-                    interp_func = interpolate.interp1d(
-                        valid_times, valid_hr, kind='cubic',
-                        bounds_error=False, fill_value='extrapolate'
-                    )
-                else:
-                    # Fall back to linear if not enough points
-                    interp_func = interpolate.interp1d(
-                        valid_times, valid_hr, kind='linear',
-                        bounds_error=False, fill_value='extrapolate'
-                    )
-            elif method == 'nearest':
-                interp_func = interpolate.interp1d(
-                    valid_times, valid_hr, kind='nearest',
-                    bounds_error=False, fill_value='extrapolate'
-                )
-            else:
-                raise ValueError(f"Unknown interpolation method: {method}")
+            interp_func = interpolate.interp1d(
+                valid_times,
+                valid_hr,
+                kind="linear",
+                bounds_error=False,
+                fill_value="extrapolate",
+            )
 
             interpolated_hr = interp_func(regular_times)
 
