@@ -110,5 +110,28 @@ def plot_signals(signals, fs=1.0, labels=None, title="Overlay Plot",
 
     if filename:
         plt.savefig(f"../plots/{filename}.svg", dpi=150)
-    fig.show()
+    plt.show()
     plt.close(fig)
+
+def plot_estimated_hr(hr_estimation, title="Estimated Heart Rate", filename=None):
+    """
+    Plot estimated heart rate over time.
+    
+    Parameters:
+    - hr_estimation: dict with keys "est_times" and "est_hr"
+    - title: Plot title
+    - filename: If provided, saves the figure as PNG
+    """
+    est_times = hr_estimation['est_times']
+    est_hr = hr_estimation['est_hr']
+
+    plt.figure(figsize=(10, 4))
+    plt.plot(est_times, est_hr, marker='o', linestyle='-', color='tab:red')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Heart Rate (BPM)")
+    plt.title(title)
+    plt.grid(True)
+    
+    if filename:
+        plt.savefig(filename + ".png", dpi=300, bbox_inches='tight')
+    plt.show()
