@@ -1,6 +1,6 @@
 import numpy as np
 import pywt
-from scipy.signal import butter, filtfilt, find_peaks, medfilt
+from scipy.signal import butter, filtfilt, find_peaks, medfilt, lfilter
 from scipy.interpolate import interp1d
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -27,7 +27,8 @@ def run_all_steps(ppg, acc, hr_gt, ppg_fs=64.0, hr_fs=1.0, wv='bior3.9', wv_leve
         peaks,
         window_size=peak_window_size_sec,
         stride=peak_stride_sec,
-        signal_len=len(ppg_cleaned)/ppg_fs
+        signal_len=len(ppg_cleaned)/ppg_fs,
+        smoothing="butterworth+exp"
     )
 
     mae, rmse, corr = evaluate_hr(est_times, est_hr, hr_gt, gt_fs=hr_fs)
@@ -93,7 +94,8 @@ def detect_peaks(ppg, fs, min_dist, prominence=0.5, window_sec=5, stride_sec=1):
     return np.array(sorted(list(set(peaks)))), np.array(times) / fs
 
 def estimate_hr_from_peaks(peaks, window_size=5, stride=1, signal_len=None, 
-                           smoothing=None, kernel_size=5):
+                           smoothing=None, kernel_size=5,
+                           fs_hr=1.0, fc_lp=0.33, alpha_exp=0.2):
     """
     Estimate heart rate over time from peak locations.
 
@@ -102,8 +104,11 @@ def estimate_hr_from_peaks(peaks, window_size=5, stride=1, signal_len=None,
         window_size (float): Size of the sliding window in seconds.
         stride (float): Step size for sliding window in seconds.
         signal_len (float, optional): Total signal duration in seconds.
-        smoothing (str, optional): Apply 'moving_average' or 'median' filter to smooth HR.
-        kernel_size (int): Smoothing kernel size (must be odd).
+        smoothing (str, optional): 'moving_average', 'median', or 'butterworth+exp'.
+        kernel_size (int): Smoothing kernel size.
+        fs_hr (float): Sampling frequency of HR estimates (Hz). Only for butterworth+exp.
+        fc_lp (float): Cutoff frequency of low-pass filter for HR (Hz).
+        alpha_exp (float): Alpha parameter for exponential smoothing.
 
     Returns:
         est_times (np.ndarray): Time points for each HR estimate (center of window).
@@ -125,14 +130,21 @@ def estimate_hr_from_peaks(peaks, window_size=5, stride=1, signal_len=None,
     estimated_hr = np.array(estimated_hr)
     est_times = np.array(est_times)
 
-    # Smoothing
+    # Smoothing options
     if smoothing == "moving_average":
         kernel = np.ones(kernel_size) / kernel_size
         estimated_hr = np.convolve(estimated_hr, kernel, mode='same')
     elif smoothing == "median":
         if kernel_size % 2 == 0:
-            kernel_size += 1  # ensure odd kernel size
+            kernel_size += 1
         estimated_hr = medfilt(estimated_hr, kernel_size=kernel_size)
+    elif smoothing == "butterworth+exp" and len(estimated_hr) > 3:
+        # Butterworth low-pass filter
+        b, a = butter(2, fc_lp / (fs_hr / 2))
+        hr_lp = filtfilt(b, a, estimated_hr)
+
+        # Exponential smoothing (IIR)
+        estimated_hr = lfilter([alpha_exp], [1, alpha_exp - 1], hr_lp)
 
     return est_times, estimated_hr
 
