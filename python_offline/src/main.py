@@ -51,4 +51,21 @@ plot_signals(
 
 plot_signal(ppg_cleaned, fs=ppg_fs, label='Cleaned PPG', peaks=peaks, title='Detected Peaks', filename='peaks')
 
-plot_estimated_hr(results['hr_estimation'])
+# plot_estimated_hr(results['hr_estimation']) # just plotting the HR estimation
+
+hr_estimation = results['hr_estimation']
+est_times = hr_estimation['est_times']
+est_hr = hr_estimation['est_hr']
+gt_times = np.arange(len(gt_segment)) / signals['hr_fs']
+plot_signals(
+    [],
+    fs=ppg_fs,
+    title="HR Estimation vs Ground Truth",
+    hr_overlay=(est_times, est_hr, gt_times, gt_segment),
+    filename="hr_comparison",
+    # xlim=(0, 1320)
+)
+
+metrics = results['metrics']
+mae, rmse, corr = metrics['mae'], metrics['rmse'], metrics['corr']
+print(f"MAE: {mae:.2f}, RMSE: {rmse:.2f}, Pearson Correlation: {corr:.2f}")
