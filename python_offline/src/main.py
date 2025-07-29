@@ -1,12 +1,10 @@
-
-
 import os
 from scipy.signal import resample
 import numpy as np
 
-from ppg_pipeline.pipeline import run_preprocessing
+from ppg_pipeline.pipeline import run_all_steps, run_preprocessing
 from data_loader import load_ppg_dalia, load_activity_intervals
-from plot_utils import plot_signals, plot_signal
+from plot_utils import plot_signals, plot_signal, plot_estimated_hr
 
 base_path = r'C:\Users\Florian\Downloads\datasets_cache\ppg_dalia\PPG_FieldStudy\S1'
 activity_csv = os.path.join(base_path, "S1_activity.csv")
@@ -37,7 +35,8 @@ acc_segment = acc_resampled[int(start_s*ppg_fs):int(end_s*ppg_fs)]
 acc_segment = np.linalg.norm(acc_segment, axis=1)
 gt_segment = hr_gt[int(start_s*hr_fs):int(end_s*hr_fs)]
 
-results = run_preprocessing(ppg=ppg_segment, ppg_fs=ppg_fs, acc=acc_segment, peak_min_distance=0.8)
+# results = run_preprocessing(ppg=ppg_segment, ppg_fs=ppg_fs, acc=acc_segment, peak_min_distance=0.8)
+results = run_all_steps(ppg=ppg_segment, acc=acc_segment, hr_gt=gt_segment, ppg_fs=ppg_fs, hr_fs=1)
 
 peaks, ppg_detrended, ppg_filtered, ppg_cleaned = results['peaks'], results['ppg_detrended'], results['ppg_filtered'], results['ppg_cleaned']
 
@@ -51,3 +50,5 @@ plot_signals(
 )
 
 plot_signal(ppg_cleaned, fs=ppg_fs, label='Cleaned PPG', peaks=peaks, title='Detected Peaks', filename='peaks')
+
+plot_estimated_hr(results['hr_estimation'])
