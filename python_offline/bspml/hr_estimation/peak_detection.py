@@ -15,7 +15,9 @@ def find_peaks_sliding_window(
     prominence: Optional[float] = 0.55,
     min_peak_height: Optional[float] = 0,
     adaptive_threshold: bool = True,
-    use_envelope_method: bool = False
+    use_envelope_method: bool = False,
+    max_peak_distance: float = 2.0,
+    prominence_factor: float = 0.5
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Find PPG peaks using sliding window with local maxima detection.
@@ -29,6 +31,8 @@ def find_peaks_sliding_window(
         min_peak_height: Minimum peak height (default: adaptive)
         adaptive_threshold: Whether to use adaptive thresholding
         use_envelope_method: If True, use envelope method instead of detect_peaks_in_window
+        max_peak_distance: Maximum distance between peaks in seconds (for envelope method)
+        prominence_factor: Factor for prominence calculation (for envelope method)
 
     Returns:
         Tuple of (peak_indices, peak_values)
@@ -58,7 +62,9 @@ def find_peaks_sliding_window(
             window_peaks = detect_peaks_envelope_in_window(
                 window_signal,
                 sampling_rate,
-                min_peak_distance
+                min_peak_distance,
+                max_peak_distance,
+                prominence_factor
             )
         else:
             window_peaks = detect_peaks_in_window(

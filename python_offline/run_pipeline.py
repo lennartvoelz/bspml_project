@@ -17,6 +17,8 @@ from bspml import (
     get_available_subjects,
     evaluate_pipeline_performance,
     print_evaluation_summary,
+    load_config,
+    get_dataset_config,
 )
 
 
@@ -107,10 +109,8 @@ def plot_pipeline_results(
     # Plot 3: Detected peaks on processed signal
     if hr_results.get("success", False):
         # Show a portion of the signal with detected peaks
-        window_start = len(ppg_processed) // 4
-        window_end = min(
-            window_start + int(30 * sampling_rate), len(ppg_processed)
-        )  # 30 seconds
+        window_start = int(40 * sampling_rate)
+        window_end = int(80 * sampling_rate)
 
         window_time = time_axis[window_start:window_end]
         window_signal = ppg_processed[window_start:window_end]
@@ -166,6 +166,7 @@ def plot_pipeline_results(
     plot_path = os.path.join(output_dir, f"pipeline_results_{subject_id}.png")
     plt.savefig(plot_path, dpi=300, bbox_inches="tight")
     plt.close()
+    plt.show()
 
     print(f"Plot saved to: {plot_path}")
 
@@ -177,6 +178,8 @@ def run_pipeline(
     start_time: float = 100,
     output_dir: Optional[str] = None,
     auto_detect: bool = True,
+    dataset_type: Optional[str] = None,
+    config_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run the complete PPG processing pipeline.
@@ -188,6 +191,8 @@ def run_pipeline(
         data_path: Path to dataset directory
         output_dir: Output directory (auto-created if None)
         auto_detect: Whether to automatically detect data type
+        dataset_type: Dataset type ('ppgDalia' or 'real') - overrides auto-detection
+        config_path: Path to configuration file (uses default if None)
 
     Returns:
         Dictionary containing all results
@@ -195,6 +200,9 @@ def run_pipeline(
     print(f"Starting PPG processing pipeline for data: {data_identifier}")
     print(f"Duration: {duration}s, Start time: {start_time}s")
     print("-" * 50)
+
+    # Load configuration
+    config = load_config(config_path)
 
     if output_dir is None:
         output_dir = create_output_directory()
@@ -275,6 +283,31 @@ def run_pipeline(
             print("   No ground truth HR data available")
         results["ground_truth"] = ground_truth
 
+        # Determine dataset type for configuration
+        if dataset_type is not None:
+            # Use explicitly provided dataset type
+            config_dataset_type = dataset_type
+        elif auto_detect:
+            # Map detected data type to config key
+            detected_type = results.get("data_type", "Unknown")
+            if "PPG_Dalia" in detected_type or "PPG Dalia" in detected_type:
+                config_dataset_type = "ppgDalia"
+            elif "Real" in detected_type or "real" in detected_type:
+                config_dataset_type = "real"
+            else:
+                print(
+                    f"Warning: Unknown data type '{detected_type}', using ppgDalia config")
+                config_dataset_type = "ppgDalia"
+        else:
+            # Default to ppgDalia when not auto-detecting
+            config_dataset_type = "ppgDalia"
+
+        # Get dataset-specific configuration
+        dataset_config = get_dataset_config(config, config_dataset_type)
+        print(f"   Using configuration for: {config_dataset_type}")
+        results["config_dataset_type"] = config_dataset_type
+        results["config"] = dataset_config
+
         print("2. Preprocessing PPG signal...")
         print("   - Wavelet detrending")
         print("   - Bandpass filtering (0.5-4 Hz)")
@@ -285,17 +318,60 @@ def run_pipeline(
             acc_signals=acc_signals,
             sampling_rate=ppg_sampling_rate,
             acc_sampling_rate=acc_sampling_rate,
-            enable_detrending=True,
-            enable_denoising=True,
-            enable_motion_removal=True,
-            adaptive_motion_removal=True,
-            motion_threshold=50.0,
+            enable_detrending=dataset_config["enable_detrending"],
+            enable_denoising=dataset_config["enable_denoising"],
+            enable_motion_removal=dataset_config["enable_motion_removal"],
+            adaptive_motion_removal=dataset_config["adaptive_motion_removal"],
+            motion_threshold=dataset_config["motion_threshold"],
+            preprocessing_params={
+                "rls": {
+                    "filter_order": dataset_config["filter_order"],
+                    "forgetting_factor": dataset_config["forgetting_factor"],
+                    "delay_compensation": dataset_config["delay_compensation"],
+                    "auto_delay_detection": dataset_config["auto_delay_detection"],
+                },
+                "bandpass": {
+                    "low_cutoff": dataset_config["low_cutoff"],
+                    "high_cutoff": dataset_config["high_cutoff"],
+                    "filter_order": dataset_config["bandpass_filter_order"],
+                    "filter_type": dataset_config["filter_type"],
+                },
+                "wavelet": {
+                    "wavelet": dataset_config["wavelet"],
+                    "levels": dataset_config["levels"],
+                    "mode": dataset_config["mode"],
+                },
+            },
         )
         print(f"   Preprocessing completed")
 
         print("3. Estimating heart rate...")
+
+        # Prepare HR estimation parameters based on detection method
+        hr_params = {
+            "window_size": dataset_config["window_size"],
+            "overlap": dataset_config["overlap"],
+            "min_peak_distance": dataset_config["min_peak_distance"],
+            "prominence": dataset_config["prominence"],
+            "min_peak_height": dataset_config["min_peak_height"],
+            "adaptive_threshold": dataset_config["adaptive_threshold"],
+            "use_envelope_method": dataset_config["use_envelope_method"],
+        }
+
+        # Add envelope-specific parameters only if using envelope method
+        if dataset_config["use_envelope_method"]:
+            hr_params.update({
+                "max_peak_distance": dataset_config["max_peak_distance"],
+                "prominence_factor": dataset_config["prominence_factor"],
+            })
+
         hr_results = estimate_heart_rate(
-            ppg_signal=ppg_processed, sampling_rate=ppg_sampling_rate, return_peaks=True
+            ppg_signal=ppg_processed,
+            sampling_rate=ppg_sampling_rate,
+            peak_detection_method=dataset_config["peak_detection_method"],
+            interpolation_rate=dataset_config["interpolation_rate"],
+            return_peaks=dataset_config["return_peaks"],
+            **hr_params
         )
 
         # Adjust time axis to account for start_time offset
@@ -389,20 +465,22 @@ if __name__ == "__main__":
     if real_world_files and USE_REAL_WORLD_DATA:
         print("\nRunning pipeline with real-world data...")
         results = run_pipeline(
-            data_identifier=real_world_files[0],
-            duration=700.0,
-            start_time=60.0,
+            data_identifier=real_world_files[1],
+            duration=1000.0,
+            start_time=100.0,
             data_path="../data",
             auto_detect=True,
+            dataset_type="real",
         )
     elif ppg_dalia_subjects:
         print("\nRunning pipeline with PPG Dalia data...")
         results = run_pipeline(
-            data_identifier=ppg_dalia_subjects[2],
-            duration=700.0,
-            start_time=130.0,
+            data_identifier=ppg_dalia_subjects[0],
+            duration=1000.0,
+            start_time=9077.0,
             data_path="data/ppg_dalia",
             auto_detect=False,
+            dataset_type="ppgDalia",
         )
     else:
         print("No data found! Please check your data directory.")

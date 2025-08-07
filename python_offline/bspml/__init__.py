@@ -13,6 +13,7 @@ from . import preprocessing
 from . import hr_estimation
 from . import data_loading
 from . import evaluation
+from . import config
 
 # Import key functions
 from .preprocessing import preprocess_ppg
@@ -28,12 +29,14 @@ from .data_loading import (
     get_available_real_world_files,
 )
 from .evaluation import evaluate_pipeline_performance, print_evaluation_summary
+from .config import load_config, get_dataset_config, print_config
 
 __all__ = [
     "preprocessing",
     "hr_estimation",
     "data_loading",
     "evaluation",
+    "config",
     "preprocess_ppg",
     "estimate_heart_rate",
     "load_ppg_dalia_data",
@@ -42,4 +45,7 @@ __all__ = [
     "get_available_subjects",
     "evaluate_pipeline_performance",
     "print_evaluation_summary",
+    "load_config",
+    "get_dataset_config",
+    "print_config",
 ]
