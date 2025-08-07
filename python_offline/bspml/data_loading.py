@@ -53,7 +53,8 @@ def load_ppg_dalia_data(
     # Load additional metadata if available
     try:
         # Load activity data
-        activity_file = os.path.join(subject_path, f"{subject_id}_activity.csv")
+        activity_file = os.path.join(
+            subject_path, f"{subject_id}_activity.csv")
         if os.path.exists(activity_file):
             activity_df = pd.read_csv(activity_file)
             activities = []
@@ -321,7 +322,8 @@ def load_ground_truth_data(
             hr_sampling_freq = float(lines[1])
 
             # Rest are heart rate values in bpm
-            hr_values = np.array([float(line) for line in lines[2:] if line.strip()])
+            hr_values = np.array([float(line)
+                                 for line in lines[2:] if line.strip()])
 
             # Create time axis for HR data
             hr_time_axis = np.arange(len(hr_values)) / hr_sampling_freq
@@ -434,7 +436,7 @@ def load_data_auto(
     duration: Optional[float] = None,
     start_time: float = 0,
     data_path: str = "data/",
-) -> Tuple[np.ndarray, Optional[np.ndarray], float, Dict, Dict]:
+) -> Tuple[np.ndarray, Optional[np.ndarray], float, float, Dict, Dict]:
     """
     Automatically detect data type and load appropriate data.
 
@@ -445,7 +447,7 @@ def load_data_auto(
         data_path: Base path to data directory
 
     Returns:
-        Tuple of (ppg_signal, acc_signals, sampling_rate, metadata, ground_truth)
+        Tuple of (ppg_signal, acc_signals, ppg_sampling_rate, acc_sampling_rate, metadata, ground_truth)
     """
     # Try to determine data type
     if os.path.isfile(data_identifier):
@@ -455,8 +457,9 @@ def load_data_auto(
             ppg_signal, acc_signals, sampling_rate, metadata = load_real_world_data(
                 data_identifier, duration, start_time
             )
-            ground_truth = {"heart_rate": None}  # No ground truth for real-world data
-            return ppg_signal, acc_signals, sampling_rate, metadata, ground_truth
+            # No ground truth for real-world data
+            ground_truth = {"heart_rate": None}
+            return ppg_signal, acc_signals, sampling_rate, sampling_rate, metadata, ground_truth
 
     # Check if it's a real-world file in the data directory
     real_world_path = os.path.join(data_path, "real_world")
@@ -467,7 +470,7 @@ def load_data_auto(
                 potential_file, duration, start_time
             )
             ground_truth = {"heart_rate": None}
-            return ppg_signal, acc_signals, sampling_rate, metadata, ground_truth
+            return ppg_signal, acc_signals, sampling_rate, sampling_rate, metadata, ground_truth
 
     # Default to PPG Dalia format
     ppg_dalia_path = os.path.join(data_path, "ppg_dalia")
@@ -496,7 +499,7 @@ def load_data_auto(
     # Combine metadata
     combined_metadata = {**ppg_metadata, **acc_metadata}
 
-    return ppg_signal, acc_signals, ppg_sampling_rate, combined_metadata, ground_truth
+    return ppg_signal, acc_signals, ppg_sampling_rate, acc_sampling_rate, combined_metadata, ground_truth
 
 
 def get_available_subjects(data_path: str = "data/ppg_dalia") -> list:

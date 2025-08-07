@@ -9,11 +9,13 @@ logger = logging.getLogger(__name__)
 def find_peaks_sliding_window(
     ppg_signal: np.ndarray,
     sampling_rate: float,
-    window_size: float = 8.0,
-    overlap: float = 0.2,
-    min_peak_distance: float = 0.3,
-    min_peak_height: Optional[float] = None,
-    adaptive_threshold: bool = True
+    window_size: float = 10.0,
+    overlap: float = 0.3,
+    min_peak_distance: float = 0.32,
+    prominence: Optional[float] = 0.55,
+    min_peak_height: Optional[float] = 0,
+    adaptive_threshold: bool = True,
+    use_envelope_method: bool = False
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Find PPG peaks using sliding window with local maxima detection.
@@ -26,6 +28,7 @@ def find_peaks_sliding_window(
         min_peak_distance: Minimum distance between peaks in seconds
         min_peak_height: Minimum peak height (default: adaptive)
         adaptive_threshold: Whether to use adaptive thresholding
+        use_envelope_method: If True, use envelope method instead of detect_peaks_in_window
 
     Returns:
         Tuple of (peak_indices, peak_values)
@@ -50,13 +53,21 @@ def find_peaks_sliding_window(
         end_idx = start_idx + window_samples
         window_signal = ppg_signal[start_idx:end_idx]
 
-        # Find peaks in current window
-        window_peaks = detect_peaks_in_window(
-            window_signal,
-            min_distance_samples,
-            min_peak_height,
-            adaptive_threshold
-        )
+        # Find peaks in current window using selected method
+        if use_envelope_method:
+            window_peaks = detect_peaks_envelope_in_window(
+                window_signal,
+                sampling_rate,
+                min_peak_distance
+            )
+        else:
+            window_peaks = detect_peaks_in_window(
+                window_signal,
+                min_distance_samples,
+                prominence,
+                adaptive_threshold,
+                min_peak_height
+            )
 
         # Convert local indices to global indices
         global_peaks = window_peaks + start_idx
@@ -90,8 +101,9 @@ def find_peaks_sliding_window(
 def detect_peaks_in_window(
     window_signal: np.ndarray,
     min_distance: int,
-    min_height: Optional[float] = None,
-    adaptive_threshold: bool = True
+    prominence: float,
+    adaptive_threshold: bool = True,
+    min_height: Optional[float] = None
 ) -> np.ndarray:
     """
     Detect peaks within a single window using local maxima.
@@ -110,20 +122,72 @@ def detect_peaks_in_window(
 
     # Calculate adaptive threshold if requested
     if adaptive_threshold:
-        if min_height is None:
-            # Use median + fraction of signal range as threshold
-            signal_median = np.median(window_signal)
-            signal_range = np.ptp(window_signal)  # peak-to-peak
-            min_height = signal_median + 0.1 * signal_range
+        if prominence is None:
+            prominence = 0.5 * np.std(window_signal)
 
     # Find peaks using scipy
     peaks, properties = signal.find_peaks(
         window_signal,
-        height=min_height,
-        distance=min_distance
+        prominence=prominence,
+        distance=min_distance,
+        height=min_height
     )
 
     return peaks
+
+
+def detect_peaks_envelope_in_window(
+    window_signal: np.ndarray,
+    sampling_rate: float,
+    min_peak_distance: float = 0.5,
+    max_peak_distance: float = 2.0,
+    prominence_factor: float = 0.5
+) -> np.ndarray:
+    """
+    Detect peaks within a single window using envelope method.
+    Uses the same logic as find_peaks_envelope but applied to a window.
+
+    Args:
+        window_signal: Signal window
+        sampling_rate: Sampling rate in Hz
+        min_peak_distance: Minimum distance between peaks in seconds
+        max_peak_distance: Maximum distance between peaks in seconds
+        prominence_factor: Factor for prominence calculation
+
+    Returns:
+        Array of peak indices within the window
+    """
+    if len(window_signal) < 3:
+        return np.array([])
+
+    analytic_signal = signal.hilbert(window_signal)
+    envelope = np.abs(analytic_signal)
+
+    win = int(0.1 * sampling_rate)
+    if win % 2 == 0:
+        win += 1
+    kernel = np.ones(win) / win
+    env_smooth = np.convolve(envelope, kernel, mode="same")
+
+    # Mask negative values and calculate prominence
+    env_masked = env_smooth.copy()
+    env_masked[window_signal <= 0] = 0
+    prom = np.std(env_masked) * prominence_factor
+
+    # Find peaks
+    min_dist = int(min_peak_distance * sampling_rate)
+    peaks, _ = signal.find_peaks(
+        env_masked, distance=min_dist, prominence=prom)
+
+    peak_times = peaks/sampling_rate
+    ibi = np.diff(peak_times)
+    valid = np.logical_and(ibi >= min_peak_distance, ibi <= max_peak_distance)
+    filtered_peaks = [peaks[0]]
+    for idx, ok in enumerate(valid, start=1):
+        if ok:
+            filtered_peaks.append(peaks[idx])
+
+    return np.array(filtered_peaks)
 
 
 def detect_ppg_peaks(
@@ -138,7 +202,7 @@ def detect_ppg_peaks(
     Args:
         ppg_signal: Input PPG signal
         sampling_rate: Sampling rate in Hz
-        method: Peak detection method ('sliding_window')
+        method: Peak detection method ('sliding_window', 'envelope')
         **kwargs: Additional parameters for the chosen method
 
     Returns:
@@ -203,3 +267,39 @@ def remove_duplicate_peaks(
         i = j
 
     return np.array(unique_peaks), np.array(unique_values)
+
+
+def find_peaks_envelope(
+        ppg_signal: np.ndarray,
+        sampling_rate: float,
+        min_peak_distance: float = 0.4,
+        max_peak_distance: float = 1.5,
+        prominence_factor: float = 0.4):
+
+    analytic_signal = signal.hilbert(ppg_signal)
+    envelope = np.abs(analytic_signal)
+
+    win = int(0.1 * sampling_rate)
+    if win % 2 == 0:
+        win += 1
+    kernel = np.ones(win) / win
+    env_smooth = np.convolve(envelope, kernel, mode="same")
+
+    env_masked = env_smooth.copy()
+    env_masked[ppg_signal <= 0] = 0
+    prom = np.std(env_masked) * prominence_factor
+
+    min_dist = int(min_peak_distance * sampling_rate)
+    peaks, props = signal.find_peaks(
+        env_smooth, distance=min_dist, prominence=prom)
+
+    peak_times = peaks/sampling_rate
+
+    ibi = np.diff(peak_times)
+    valid = np.logical_and(ibi >= min_peak_distance, ibi <= max_peak_distance)
+    filtered_peaks = [peaks[0]]
+    for idx, ok in enumerate(valid, start=1):
+        if ok:
+            filtered_peaks.append(peaks[idx])
+
+    return np.array(filtered_peaks), {"method": "envelope"}

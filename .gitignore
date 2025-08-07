@@ -209,3 +209,5 @@ __marimo__/
 # Data folder
 data/
 !data/README.md
+
+results/

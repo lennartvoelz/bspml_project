@@ -55,12 +55,18 @@ def calculate_instantaneous_hr(
 
         if len(regular_times) > 1:
             # Interpolate heart rate values
-            interp_func = interpolate.interp1d(
-                valid_times,
-                valid_hr,
-                kind="linear",
-                bounds_error=False,
-                fill_value="extrapolate",
+            # interp_func = interpolate.interp1d(
+            #     valid_times,
+            #     valid_hr,
+            #     kind="linear",
+            #     bounds_error=False,
+            #     fill_value="extrapolate",
+            # )
+
+            interp_func = interpolate.PchipInterpolator(
+                x=valid_times,
+                y=valid_hr,
+                extrapolate=False
             )
 
             interpolated_hr = interp_func(regular_times)

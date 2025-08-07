@@ -28,7 +28,7 @@ def wavelet_detrend(
         raise ValueError("Input signal contains non-finite values")
 
     if levels is None:
-        levels = min(6, int(np.log2(len(signal))))
+        levels = 6
 
     coeffs = pywt.wavedec(signal, wavelet, level=levels, mode=mode)
     coeffs[0] = np.zeros_like(coeffs[0])  # Remove low-frequency components

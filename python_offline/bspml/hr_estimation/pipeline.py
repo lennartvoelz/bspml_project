@@ -10,7 +10,7 @@ def estimate_heart_rate(
     ppg_signal: np.ndarray,
     sampling_rate: float,
     peak_detection_method: str = "sliding_window",
-    interpolation_rate: Optional[float] = 1.0,
+    interpolation_rate: Optional[float] = 0.6,
     return_peaks: bool = False,
     **kwargs,
 ) -> Dict[str, Any]:

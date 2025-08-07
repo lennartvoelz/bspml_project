@@ -64,17 +64,20 @@ def plot_pipeline_results(
 
     # Create figure with subplots
     fig, axes = plt.subplots(4, 1, figsize=(15, 12))
-    fig.suptitle(f"PPG Processing Pipeline Results - Subject {subject_id}", fontsize=16)
+    fig.suptitle(
+        f"PPG Processing Pipeline Results - Subject {subject_id}", fontsize=16)
 
     # Plot 1: Raw vs Processed PPG
-    axes[0].plot(time_axis, ppg_raw, "b-", alpha=0.7, label="Raw PPG", linewidth=0.8)
-    axes[0].plot(time_axis, ppg_processed, "r-", label="Processed PPG", linewidth=1.0)
+    axes[0].plot(time_axis, ppg_raw, "b-", alpha=0.7,
+                 label="Raw PPG", linewidth=0.8)
+    axes[0].plot(time_axis, ppg_processed, "r-",
+                 label="Processed PPG", linewidth=1.0)
     axes[0].set_ylabel("PPG Amplitude")
     axes[0].set_title("Raw vs Processed PPG Signal")
     axes[0].legend()
     axes[0].grid(True, alpha=0.3)
 
-    # Plot 2: Accelerometer signals (combined magnitude)
+    # Plot 2: Accelerometer signals
     from bspml.preprocessing import (
         combine_accelerometer_channels,
         resample_accelerometer_data,
@@ -118,7 +121,8 @@ def plot_pipeline_results(
         if "peaks" in hr_results and isinstance(hr_results["peaks"], dict):
             peak_indices = hr_results["peaks"].get("indices", np.array([]))
             if len(peak_indices) > 0:
-                peak_mask = (peak_indices >= window_start) & (peak_indices < window_end)
+                peak_mask = (peak_indices >= window_start) & (
+                    peak_indices < window_end)
                 window_peaks = peak_indices[peak_mask] - window_start
                 if len(window_peaks) > 0:
                     axes[2].plot(
@@ -138,14 +142,16 @@ def plot_pipeline_results(
     if hr_results.get("success", False) and "time_points" in hr_results:
         hr_time = hr_results["time_points"]
         hr_values = hr_results["hr_values"]
-        axes[3].plot(hr_time, hr_values, "r-", linewidth=2, label="Estimated HR")
+        axes[3].plot(hr_time, hr_values, "r-",
+                     linewidth=2, label="Estimated HR")
 
         # Plot ground truth if available
         if ground_truth is not None and ground_truth.get("heart_rate") is not None:
             gt_hr = ground_truth["heart_rate"]
             gt_time = gt_hr["time_axis"]
             gt_values = gt_hr["values"]
-            axes[3].plot(gt_time, gt_values, "g-", linewidth=2, label="Ground Truth HR")
+            axes[3].plot(gt_time, gt_values, "g-",
+                         linewidth=2, label="Ground Truth HR")
 
         axes[3].set_ylabel("Heart Rate (BPM)")
         axes[3].set_xlabel("Time (seconds)")
@@ -165,10 +171,10 @@ def plot_pipeline_results(
 
 
 def run_pipeline(
-    data_identifier: str = "S1",
-    duration: Optional[float] = 60.0,  # Process 60 seconds by default
-    start_time: float = 0,
-    data_path: str = "data",
+    data_path: str,
+    data_identifier: str,
+    duration: Optional[float] = 600.0,  # Process 600 seconds by default
+    start_time: float = 100,
     output_dir: Optional[str] = None,
     auto_detect: bool = True,
 ) -> Dict[str, Any]:
@@ -205,7 +211,7 @@ def run_pipeline(
     try:
         if auto_detect:
             print("1. Auto-detecting data type and loading data...")
-            ppg_signal, acc_signals, sampling_rate, metadata, ground_truth = (
+            ppg_signal, acc_signals, ppg_sampling_rate, acc_sampling_rate, metadata, ground_truth = (
                 load_data_auto(
                     data_identifier=data_identifier,
                     duration=duration,
@@ -213,12 +219,12 @@ def run_pipeline(
                     data_path=data_path,
                 )
             )
-            ppg_sampling_rate = sampling_rate
-            acc_sampling_rate = sampling_rate
 
             data_type = metadata.get("data_source", "Unknown")
             print(f"   Detected data type: {data_type}")
-            print(f"   Loaded {len(ppg_signal)} PPG samples at {ppg_sampling_rate} Hz")
+
+            print(
+                f"   Loaded {len(ppg_signal)} PPG samples at {ppg_sampling_rate} Hz")
             if acc_signals is not None:
                 print(
                     f"   Loaded {len(acc_signals)} ACC samples at {acc_sampling_rate} Hz"
@@ -228,7 +234,6 @@ def run_pipeline(
             results["metadata"] = metadata
 
         else:
-            # Legacy mode - assume PPG Dalia format
             print("1. Loading PPG data (PPG Dalia format)...")
             ppg_signal, ppg_sampling_rate, ppg_metadata = load_ppg_dalia_data(
                 subject_id=data_identifier,
@@ -236,7 +241,8 @@ def run_pipeline(
                 start_time=start_time,
                 data_path=data_path,
             )
-            print(f"   Loaded {len(ppg_signal)} PPG samples at {ppg_sampling_rate} Hz")
+            print(
+                f"   Loaded {len(ppg_signal)} PPG samples at {ppg_sampling_rate} Hz")
 
             print("2. Loading accelerometer data...")
             acc_signals, acc_sampling_rate, acc_metadata = load_accelerometer_data(
@@ -245,7 +251,8 @@ def run_pipeline(
                 start_time=start_time,
                 data_path=data_path,
             )
-            print(f"   Loaded {len(acc_signals)} ACC samples at {acc_sampling_rate} Hz")
+            print(
+                f"   Loaded {len(acc_signals)} ACC samples at {acc_sampling_rate} Hz")
 
             print("3. Loading ground truth data...")
             ground_truth = load_ground_truth_data(
@@ -262,7 +269,8 @@ def run_pipeline(
         # Display ground truth info
         if ground_truth is not None and ground_truth.get("heart_rate") is not None:
             gt_hr = ground_truth["heart_rate"]
-            print(f"   Ground truth HR: {gt_hr['mean']:.1f} ± {gt_hr['std']:.1f} BPM")
+            print(
+                f"   Ground truth HR: {gt_hr['mean']:.1f} ± {gt_hr['std']:.1f} BPM")
         else:
             print("   No ground truth HR data available")
         results["ground_truth"] = ground_truth
@@ -281,7 +289,7 @@ def run_pipeline(
             enable_denoising=True,
             enable_motion_removal=True,
             adaptive_motion_removal=True,
-            motion_threshold=60.0,
+            motion_threshold=50.0,
         )
         print(f"   Preprocessing completed")
 
@@ -316,7 +324,8 @@ def run_pipeline(
         print("4. Creating visualizations...")
         # Extract filename for output
         if os.path.isfile(data_identifier):
-            output_name = os.path.splitext(os.path.basename(data_identifier))[0]
+            output_name = os.path.splitext(
+                os.path.basename(data_identifier))[0]
         else:
             output_name = data_identifier
 
@@ -367,7 +376,7 @@ def run_pipeline(
 
 
 if __name__ == "__main__":
-    # Check for real-world data first
+    USE_REAL_WORLD_DATA = False
     real_world_files = get_available_real_world_files("data/real_world")
     ppg_dalia_subjects = get_available_subjects("data/ppg_dalia")
 
@@ -377,23 +386,22 @@ if __name__ == "__main__":
 
     print(f"Available PPG Dalia subjects: {ppg_dalia_subjects}")
 
-    # Prioritize real-world data if available
-    if real_world_files:
+    if real_world_files and USE_REAL_WORLD_DATA:
         print("\nRunning pipeline with real-world data...")
         results = run_pipeline(
-            data_identifier=real_world_files[1],
+            data_identifier=real_world_files[0],
             duration=700.0,
-            start_time=0.0,
+            start_time=60.0,
             data_path="../data",
             auto_detect=True,
         )
     elif ppg_dalia_subjects:
         print("\nRunning pipeline with PPG Dalia data...")
         results = run_pipeline(
-            data_identifier=ppg_dalia_subjects[0],
-            duration=60.0,
-            start_time=0.0,
-            data_path="../data/ppg_dalia",
+            data_identifier=ppg_dalia_subjects[2],
+            duration=700.0,
+            start_time=130.0,
+            data_path="data/ppg_dalia",
             auto_detect=False,
         )
     else:
