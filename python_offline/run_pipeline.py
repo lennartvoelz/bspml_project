@@ -158,7 +158,7 @@ def plot_pipeline_results(
         axes[3].set_title("Heart Rate Estimation vs Ground Truth")
         axes[3].legend()
         axes[3].grid(True, alpha=0.3)
-        axes[3].set_ylim(40, 160)  # Reasonable HR range
+        axes[3].set_ylim(40, 175)  # Reasonable HR range
 
     plt.tight_layout()
 
@@ -452,7 +452,7 @@ def run_pipeline(
 
 
 if __name__ == "__main__":
-    USE_REAL_WORLD_DATA = False
+    USE_REAL_WORLD_DATA = True
     real_world_files = get_available_real_world_files("data/real_world")
     ppg_dalia_subjects = get_available_subjects("data/ppg_dalia")
 
@@ -465,8 +465,8 @@ if __name__ == "__main__":
     if real_world_files and USE_REAL_WORLD_DATA:
         print("\nRunning pipeline with real-world data...")
         results = run_pipeline(
-            data_identifier=real_world_files[1],
-            duration=1000.0,
+            data_identifier=real_world_files[5],
+            duration=4000.0,
             start_time=100.0,
             data_path="../data",
             auto_detect=True,
@@ -476,8 +476,8 @@ if __name__ == "__main__":
         print("\nRunning pipeline with PPG Dalia data...")
         results = run_pipeline(
             data_identifier=ppg_dalia_subjects[0],
-            duration=1000.0,
-            start_time=9077.0,
+            duration=50.0,
+            start_time=1210.0,
             data_path="data/ppg_dalia",
             auto_detect=False,
             dataset_type="ppgDalia",

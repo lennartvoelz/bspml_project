@@ -160,8 +160,12 @@ def calculate_hr_error(
         else:
             correlation = float("nan")
 
+        # Calculate root mean square error (RMSE)
+        rmse = np.sqrt(np.mean(absolute_errors**2))
+
         return {
             "mean_absolute_error": mae,
+            "rmse": rmse,
             "correlation": correlation,
             "num_points": len(hr_est_clean),
             "time_range": (min_time, max_time),

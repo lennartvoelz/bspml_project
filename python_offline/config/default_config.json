@@ -1,6 +1,6 @@
 {
     "ppgDalia": {
-        "forgetting_factor": 0.999,
+        "forgetting_factor": 0.99,
         "filter_order": 5,
         "delay_compensation": null,
         "auto_delay_detection": false,
@@ -20,7 +20,7 @@
         "window_size": 10.0,
         "overlap": 0.3,
         "min_peak_distance": 0.4,
-        "prominence": 0.6,
+        "prominence": 1.0,
         "min_peak_height": 10,
         "adaptive_threshold": true,
         "use_envelope_method": false,
@@ -30,12 +30,12 @@
         "prominence_factor": 0.5
     },
     "real": {
-        "forgetting_factor": 0.999,
+        "forgetting_factor": 0.9,
         "filter_order": 5,
         "delay_compensation": null,
-        "auto_delay_detection": true,
+        "auto_delay_detection": false,
         "low_cutoff": 0.5,
-        "high_cutoff": 5.0,
+        "high_cutoff": 4.0,
         "bandpass_filter_order": 4,
         "filter_type": "butterworth",
         "wavelet": "db4",
@@ -49,14 +49,14 @@
         "peak_detection_method": "sliding_window",
         "window_size": 10.0,
         "overlap": 0.2,
-        "min_peak_distance": 0.52,
-        "prominence": 0.8,
+        "min_peak_distance": 0.45,
+        "prominence": 100.0,
         "min_peak_height": 10,
         "adaptive_threshold": true,
         "use_envelope_method": false,
         "interpolation_rate": 0.5,
         "return_peaks": true,
-        "max_peak_distance": 2.2,
+        "max_peak_distance": 1.5,
         "prominence_factor": 0.8
     }
 }
