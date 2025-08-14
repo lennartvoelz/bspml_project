@@ -476,8 +476,8 @@ if __name__ == "__main__":
         print("\nRunning pipeline with PPG Dalia data...")
         results = run_pipeline(
             data_identifier=ppg_dalia_subjects[0],
-            duration=50.0,
-            start_time=1210.0,
+            duration=3000.0,
+            start_time=100.0,
             data_path="data/ppg_dalia",
             auto_detect=False,
             dataset_type="ppgDalia",

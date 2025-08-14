@@ -41,7 +41,7 @@
         "wavelet": "db4",
         "levels": 6,
         "mode": "symmetric",
-        "motion_threshold": 50.0,
+        "motion_threshold": 30000.0,
         "adaptive_motion_removal": true,
         "enable_detrending": true,
         "enable_denoising": true,
@@ -54,7 +54,7 @@
         "min_peak_height": 10,
         "adaptive_threshold": true,
         "use_envelope_method": false,
-        "interpolation_rate": 0.5,
+        "interpolation_rate": 1.5,
         "return_peaks": true,
         "max_peak_distance": 1.5,
         "prominence_factor": 0.8
